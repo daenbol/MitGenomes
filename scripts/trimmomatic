@@ -1,0 +1,37 @@
+mkdir Trimmed
+cd Trimmed
+
+mkdir r1
+cd ..
+
+cp *R1* Trimmed/r1
+cd Trimmed/r1
+arrforward=($(ls -1))
+cd ..
+
+mkdir r2
+cd ..
+
+cp *R2* Trimmed/r2
+cd Trimmed/r2
+arrreverce=($(ls -1))
+cd ..
+
+cd..
+
+cut=-16
+
+fp=_forward_paired.fq
+fu=_forward_unpaired.fq
+rp=_reverce_paired.fq
+ru=_reverce_unpaired.fq
+
+for index in ${!arrforward[*]}; do
+  mkdir ${arrforward[$index]:0:($cut)}
+  java -jar /data1/Shared/daniil/for_dan/pipelines/trimmomatic-0.39.jar PE -threads 20 r1/${arrforward[$index]} r2/${arrreverce[$index]} ${arrforward[$index]:0:($cut)}/${arrforward[$index]:0:($cut)}$fp ${arrforward[$index]:0:($cut)}/${arrforward[$index]:0:($cut)}$fu ${arrforward[$index]:0:($cut)}/${arrforward[$index]:0:($cut)}$rp ${arrforward[$index]:0:($cut)}/${arrforward[$index]:0:(cut)}$ru ILLUMINACLIP:/data/Shared/bioinftools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10 SLIDINGWINDOW:5:20 TRAILING:20 MINLEN:150
+  mkdir ${arrforward[$index]:0:($cut)}/FQC
+  fastqc ${arrforward[$index]:0:($cut)}/* -o ${arrforward[$index]:0:($cut)}/FQC -t 20 
+done
+
+rm -r r1
+rm -r r2

@@ -1,0 +1,179 @@
+# 1] As far as we have a preassembled genome, we should use it
+
+cd ~/chironomids_DNA_reads/Orthocladiinae_acuticauda
+
+cp ~/PVandPP_first_part/pipelines/trimmomatic /
+for filename in *.fastq*; do fastqc ${filename}; done
+
+# Dowloading .html files and analizing them
+
+# Looking for "right" parametrs for trimmomatic
+
+./trimmomatic
+
+# Browsing in all subfolders of "Trimmed" and checking that everything is OK
+
+# Coping trimmed files to a grandparent directory
+
+# cp *.fq ../..  in each subfolder
+
+for i in Trimmed/*; do cp ${i}/* .; done
+
+cat *unpaired* > Orthocladiinae_acuticauda_unpaired.fq
+cat *for*pai* > Orthocladiinae_acuticauda_forward_paired.fq
+cat *rev*pai* > Orthocladiinae_acuticauda_reverce_paired.fq
+
+mkdir Index
+cd Index
+
+mkdir 2_attempt # This folder is for checking for some wrong contigs, 
+# this was not tested.
+
+cd ..
+
+# Coping PV mitochondrial genes into 2_attempt
+
+cp ~/support/Polypedilum_vanderplanki.fas ~/chironomids_DNA_reads/Orthocladiinae_acuticauda/Index/2_attempt
+
+cd ..
+cp orthoclafiinae_genome.fasta Index/2_attempt
+
+cd Index/2_attempt
+
+makeblastdb -in orthoclafiinae_genome.fasta -dbtype nucl
+
+blastn -task blastn -query Polypedilum_vanderplanki.fas -db orthoclafiinae_genome.fasta -out blastnOrAcGenomevsPoVaMitGenome7.out -outfmt 7
+
+# This check out was not tested, but my pipeline was quite similar 
+# (I looked for blast results of COX1 gene against all contigs of 
+# preassembled genome)
+
+cd ..
+
+for filename in Orthocladiinae_Acuticauda_*.fq; do bwa mem orthoclafiinae_genome.fasta ${filename} > mapped_${filename:0:-3}.sam -M -t 30; done
+
+for filename in *.sam; do samtools view -S -f4 -bh ${filename} > ${filename:0:-4}.bam; done
+
+for filename in *.bam; do bedtools bamtofastq -i ${filename} -fq ${filename:0:-4}_f4.fq; done
+
+cat *f4*.fq > mapped_Orthocladiinae_Acuticauda_f4.fq
+
+perl /data1/Shared/bioinftools/bbmap in=mapped_Orthocladiinae_Acuticauda_f4.fq out=mapped_Orthocladiinae_Acuticauda_forward_paired_f4_sorted_decated.fq out2=mapped_Orthocladiinae_Acuticauda_reverce_paired_f4_sorted_decated.fq outs=mapped_Orthocladiinae_Acuticauda_unpaired_f4_sorted.fq
+
+mkdir spades
+
+python /data/Shared/bioinftools/SPAdes-3.13.1-Linux/bin/spades.py -1 mapped_Orthocladiinae_Acuticauda_forward_paired_f4_sorted_decated.fq -2 mapped_Orthocladiinae_Acuticauda_reverce_paired_f4_sorted_decated.fq -s mapped_Orthocladiinae_Acuticauda_unpaired_f4_sorted.fq -o spades/ -t 30
+
+# Previewing our output
+
+cd spades
+infoseq scaffolds.fasta -only -length > preview.txt
+
+# less preview.txt
+
+# In our case scaffold ~ contig
+
+# Fortinatly there are many scaffolds in region 15 - 17 kB.
+# First, we need to pull out candidads with proper length.
+
+cp ~/support/ScaffoldsFromWindow.py .
+python ScaffoldsFromWindow.py # check the script in scripts folder on this repo
+ 
+# Now lets try to pull our mitochondrial genome. There are sevreal approaches to do it
+
+# 1) Make database out of candidads and blast COX1 gene from closely related species against db
+
+makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
+
+cp ~/support/COX1_from_PoTa.fasta .
+
+blastn -task blastn -query COX1_from_PoTa.fasta -db scaffoldsOFinterest.fasta -out blastnCOX1vsMitCandidads_OrAc_7.out -outfmt 7
+
+# 2) Make database out of candidads and blast .fas (made by MITOS v2) file with mitochondrial genes from closely related species against db
+
+makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
+
+cp ~/support/Polypedilum_Vanderplanki.fas .
+
+blastn -task blastn -query Polypedilum_Vanderplanki.fas -db caffoldsOFinterest.fasta -out blastnPoVaMitGenesvsMitCandidads_OrAc_7.out -outfmt 7
+
+# 3) Just local alligment of candidads with mitochondrial genome of closely related specie, for examle Polypedilum vanderplanki
+
+makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
+
+water scaffoldsOFinterest.fasta Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta PoVa_mit_genome_VS_OrAc_mit_candidads.water -gapopen 10.0 -gapextend 0.5; done
+
+python ViewBlastResultsFromOUTFMT6.py
+
+# Then just pulling out candidad with max score
+
+seqret scaffolds_in_range.fasta
+seqret -sequence scaffolds_in_range.fasta:*length_<Your_length>* -outseq MitCandidad1.fasta
+
+# All approaches failed. Deadend
+
+# 2] As this pipeline failed we should try to use another
+
+cd Index
+mkdir AgainstPV
+cd AgainstPV
+
+cp ~/support/Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta
+
+for filename in Orthocladiinae_Acuticauda_*.fq; do bwa mem Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta ${filename} > mapped_${filename:0:-3}.sam -M -t 30; done
+
+for filename in *.sam; do samtools view -S -F4 -bh ${filename} > ${filename:0:-4}.bam; done
+
+for filename in *.bam; do bedtools bamtofastq -i ${filename} -fq ${filename:0:-4}_F4.fq; done
+
+cat *F4* > mapped_Orthocladiinae_Acuticauda_vs_PV_F4.fq
+
+perl /data1/Shared/bioinftools/bbmap in=mapped_Orthocladiinae_Acuticauda_vs_PV_F4.fq out=mapped_Orthocladiinae_Acuticauda_forward_paired_vs_PV_F4_sorted.fq out2=mapped_Orthocladiinae_Acuticauda_reverce_paired_vs_PV_F4_sorted.fq outs=mapped_Orthocladiinae_Acuticauda_unpaired_vs_PV_F4_sorted.fq
+
+mkdir spades
+
+python /data/Shared/bioinftools/SPAdes-3.13.1-Linux/bin/spades.py -1 mapped_Orthocladiinae_Acuticauda_forward_paired_vs_PV_F4_sorted.fq -2 mapped_Orthocladiinae_Acuticauda_reverce_paired_vs_PV_F4_sorted.fq -s mapped_Orthocladiinae_Acuticauda_unpaired_vs_PV_F4_sorted.fq -o spades/ -t 30
+
+# Previewing our output
+
+cd spades
+infoseq scaffolds.fasta -only -length > preview.txt
+# less preview.txt
+
+# In our case scaffold ~ contig
+
+# Fortinatly there are many scaffolds in region 15 - 17 kB.
+# First, we need to pull out candidads with proper length.
+
+cp ~/support/ScaffoldsFromWindow.py .
+
+python ScaffoldsFromWindow.py # check the script in scripts folder on this repo
+
+# Now lets try to pull our mitochondrial genome. There are sevreal approaches to do it
+
+# 1) Make database out of candidads and blast COX1 gene from closely related species against db
+
+makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
+
+blastn -task blastn -query COX1_from_PoTa.fasta -db scaffoldsOFinterest.fasta -out blastnCOX1vsMitCandidads_OrAc_7.out -outfmt 7
+
+# 2) Make database out of candidads and blast .fas (made by MITOS v2) file with mitochondrial genes from closely related species against db
+
+cp ~/support/Polypedilum_Vanderplanki.fas
+
+makeblastdb -in Polypedilum_Vanderplanki.fas -dbtype nucl
+blastn -task blastn -query Polypedilum_Vanderplanki.fas scaffoldsOFinterest.fasta -db scaffolds_in_range.fasta -out blastnPoVaMitGenesvsMitCandidads_OrAc_7.out -outfmt 7
+
+# 3) Just local alligment of candidads with mitochondrial genome of closely related specie, for examle Polypedilum vanderplanki
+
+water Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta scaffoldsOFinterest.fasta scaffoldsOFinterest.water -gapopen 10.0 -gapextend 0.5; done
+
+python ViewBlastResultsFromOUTFMT6.py
+
+# Then just pulling out candidad with max score
+
+seqret -sequence scaffolds_in_range.fasta:*length_<Your_lenth>* -outseq MitCandidad1.fasta
+
+# All approaches failed. Deadend
+
+# DEADEND

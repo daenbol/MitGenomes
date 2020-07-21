@@ -47,6 +47,8 @@ blastn -task blastn -query Polypedilum_vanderplanki.fas -db orthoclafiinae_genom
 # This check out was not tested, but my pipeline was quite similar 
 # (I looked for blast results of COX1 gene against all contigs of 
 # preassembled genome)
+# Result of spades without wrong mit contig in a genome can be found in 3_attempt folder
+# This attempt failed
 
 cd ..
 
@@ -103,12 +105,13 @@ makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
 
 water scaffoldsOFinterest.fasta Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta PoVa_mit_genome_VS_OrAc_mit_candidads.water -gapopen 10.0 -gapextend 0.5; done
 
-python ViewBlastResultsFromOUTFMT6.py
+cp ~/support/ViewBlastResultsFromOUTFMT6.py
+CommandOutput = 'python ViewBlastResultsFromOUTFMT6.py'
 
 # Then just pulling out candidad with max score
 
 seqret scaffolds_in_range.fasta
-seqret -sequence scaffolds_in_range.fasta:*length_<Your_length>* -outseq MitCandidad1.fasta
+seqret -sequence scaffolds_in_range.fasta:*length_${CommandOutput}* -outseq MitCandidad1.fasta
 
 # All approaches failed. Deadend
 
@@ -152,27 +155,30 @@ python ScaffoldsFromWindow.py # check the script in scripts folder on this repo
 # Now lets try to pull our mitochondrial genome. There are sevreal approaches to do it
 
 # 1) Make database out of candidads and blast COX1 gene from closely related species against db
+# Failed
 
 makeblastdb -in scaffoldsOFinterest.fasta -dbtype nucl
 
 blastn -task blastn -query COX1_from_PoTa.fasta -db scaffoldsOFinterest.fasta -out blastnCOX1vsMitCandidads_OrAc_7.out -outfmt 7
 
 # 2) Make database out of candidads and blast .fas (made by MITOS v2) file with mitochondrial genes from closely related species against db
+# Was not tested
 
 cp ~/support/Polypedilum_Vanderplanki.fas
 
 makeblastdb -in Polypedilum_Vanderplanki.fas -dbtype nucl
-blastn -task blastn -query Polypedilum_Vanderplanki.fas scaffoldsOFinterest.fasta -db scaffolds_in_range.fasta -out blastnPoVaMitGenesvsMitCandidads_OrAc_7.out -outfmt 7
+blastn -task blastn -query Polypedilum_Vanderplanki.fas -db scaffoldsOFinterest.fasta -out blastnPoVaMitGenesvsMitCandidads_OrAc_7.out -outfmt 7
 
 # 3) Just local alligment of candidads with mitochondrial genome of closely related specie, for examle Polypedilum vanderplanki
+# Failed
 
 water Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta scaffoldsOFinterest.fasta scaffoldsOFinterest.water -gapopen 10.0 -gapextend 0.5; done
 
-python ViewBlastResultsFromOUTFMT6.py
+CommandOutput = 'python ~/support/viewBlastResultsFromOUTFMT6.py'
 
 # Then just pulling out candidad with max score
 
-seqret -sequence scaffolds_in_range.fasta:*length_<Your_lenth>* -outseq MitCandidad1.fasta
+seqret -sequence scaffoldsOFinterest.fasta:*length_${CommandOutput}* -outseq MitCandidad1.fasta
 
 # All approaches failed. Deadend
 

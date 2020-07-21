@@ -1,0 +1,2 @@
+1) 4L of illumina reads
+2) Some ABI data (was not involved in a pipeline)

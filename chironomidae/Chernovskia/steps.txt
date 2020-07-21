@@ -1,5 +1,5 @@
-cd ~/chironomids_DNA_reads/Chernovskiia
-cp ~/PVandPP_first_part/pipelines/trimmomatic /
+cd ~/chironomids_DNA_reads/Chernovskia
+cp ~/PVandPP_first_part/pipelines/trimmomatic .
 for filename in *.fq; do fastqc ${filename}; done
 
 # Dowloading .html files and analizing them
@@ -8,47 +8,53 @@ for filename in *.fq; do fastqc ${filename}; done
 
 ./trimmomatic
 
-# Browsing in all subfolders of "Trimmed" and ansuring that everything is OK
+# Browsing in all subfolders of "Trimmed" and checking that everything is OK
 
 # Coping trimmed files to a parent directory
 
-cp *.fq .. # in each subfolder
-cat *unpaired* > chernovskiia_S4_unpaired.fq
-cat *for*pai* > chernovskiia_S4_forward_paired.fq
-cat *rev*pai* > chernovskiia_S4_reverce_paired.fq
+# cp *.fq .. in each subfolder
+
+for i in Trimmed/*; do cp ${i}/* .; done
+
+cat *unpaired* > Chernovskia_unpaired.fq
+cat *for*pai* > Chernovskia_forward_paired.fq
+cat *rev*pai* > Chernovskia_reverce_paired.fq
 
 mkdir AgainstPV
 cd AgainstPV
 
 # Coping PV mitochondrial genome into AgainstPV
+
+cp ~/support/Polypedilum_vanderplanki_mitochondrion_complete_genome.fasta ~/chironomids_DNA_reads/Chernovskia/Index/AgainstPV
+
 bwa index Polypedilum_vanderplanki_mitochondrion_complete_genome.fasta
 
 cd ..
-cp chernovskiia_S4_unpaired.fq /AgainstPV
-cp chernovskiia_S4_reverce_paired.fq /AgainstPV
-cp chernovskiia_S4_forward_paired.fq /AgainstPV
+cp Chernovskia_unpaired.fq /AgainstPV
+cp Chernovskia_reverce_paired.fq /AgainstPV
+cp Chernovskia_forward_paired.fq /AgainstPV
 
 cd AgainstPV
 
-for filename in chernovskiia_S4_*.fq; do bwa mem Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta ${filename} > MAPPED_2_${filename:0:-3}.sam -M -t 30; done
+for filename in Chernovskia_*.fq; do bwa mem Polypedilum_Vanderplanki_mitochondrion_complete_genome.fasta ${filename} > mapped_${filename:0:-3}.sam -M -t 30; done
 
 for filename in *.sam; do samtools view -S -F4 -bh ${filename} > ${filename:0:-4}.bam; done
 
 for filename in *.bam; do bedtools bamtofastq -i ${filename} -fq ${filename:0:-4}_F4.fq; done
 
-cat *F4* > chernovskiia_S4_mapped_vs_PV_F4_sorted.fq
+cat *F4* > Chernovskia_mapped_vs_PV_F4.fq
 
-perl /data1/Shared/bioinftools/bbmap in=chernovskiia_S4_mapped_vs_PV_F4_sorted.fq out=chernovskiia_S4_forward_paired_mapped_vs_PV_F4_sorted.fq out2=chernovskiia_S4_reverce_paired_mapped_vs_PV_F4_sorted.fq outs=chernovskiia_S4_unpaired_mapped_vs_PV_F4_sorted.fq
+perl /data1/Shared/bioinftools/bbmap in=Chernovskia_mapped_vs_PV_F4.fq out=Chernovskia_forward_paired_mapped_vs_PV_F4_sorted.fq out2=Chernovskia_reverce_paired_mapped_vs_PV_F4_sorted.fq outs=Chernovskia_unpaired_mapped_vs_PV_F4_sorted.fq
 
 mkdir spades
 
-python /data/Shared/bioinftools/SPAdes-3.13.1-Linux/bin/spades.py -1 chernovskiia_S4_forward_paired_mapped_vs_PV_F4_sorted.fq -2 chernovskiia_S4_reverce_paired_mapped_vs_PV_F4_sorted.fq -s chernovskiia_S4_unpaired_mapped_vs_PV_F4_sorted.fq -o spades/ -t 30
+python /data/Shared/bioinftools/SPAdes-3.13.1-Linux/bin/spades.py -1 Chernovskia_forward_paired_mapped_vs_PV_F4_sorted.fq -2 Chernovskia_reverce_paired_mapped_vs_PV_F4_sorted.fq -s Chernovskia_unpaired_mapped_vs_PV_F4_sorted.fq -o spades/ -t 30
 
 # Previewing our output
 
 cd spades
 infoseq scaffolds.fasta -only -length > preview.txt
-less preview.txt
+# less preview.txt
 
 # In our case scaffold ~ contig
 
